@@ -38,9 +38,12 @@ namespace OfficeConverter.Helpers
         /// <returns></returns>
         public static string GetInnerException(Exception e)
         {
-            var exception = e.Message + Environment.NewLine;
+            string exception = e.Message + Environment.NewLine;
             if (e.InnerException != null)
+            {
                 exception += GetInnerException(e.InnerException);
+            }
+
             return exception;
         }
         #endregion

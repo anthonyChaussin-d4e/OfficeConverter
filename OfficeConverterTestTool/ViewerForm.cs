@@ -54,10 +54,12 @@ namespace OfficeConverterTestTool
         #region ViewerForm_Closed
         private void ViewerForm_Closed(object sender, EventArgs e)
         {
-            foreach (var tempFolder in _tempFolders)
+            foreach (string tempFolder in _tempFolders)
             {
                 if (Directory.Exists(tempFolder))
+                {
                     Directory.Delete(tempFolder, true);
+                }
             }
         }
         #endregion
@@ -66,7 +68,7 @@ namespace OfficeConverterTestTool
         private void SelectButton_Click(object sender, EventArgs e)
         {
             // Create an instance of the opeKn file dialog box.
-            var openFileDialog1 = new OpenFileDialog
+            OpenFileDialog openFileDialog1 = new OpenFileDialog
             {
                 // ReSharper disable once LocalizableElement
                 Filter = "Microsoft Office files|*.DOC;*.DOT;*.DOCM;*.DOCX;*.DOTM;*.ODT;*.XML;*.RTF;*.MHT;" +
@@ -88,13 +90,13 @@ namespace OfficeConverterTestTool
                     tempFolder = GetTemporaryFolder();
                     _tempFolders.Add(tempFolder);
 
-                    var outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) + ".pdf";
+                    string outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) + ".pdf";
 
                     OutputTextBox.Clear();
                     OutputTextBox.Text = @"Converting...";
 
-                    using (var memoryStream = new MemoryStream())
-                    using (var converter = new Converter(memoryStream))
+                    using (MemoryStream memoryStream = new MemoryStream())
+                    using (Converter converter = new Converter(memoryStream))
                     {
                         converter.UseLibreOffice = LibreOfficeCheckBox.Checked;
                         converter.Convert(openFileDialog1.FileName, outputFile);
@@ -105,7 +107,9 @@ namespace OfficeConverterTestTool
                 catch (Exception ex)
                 {
                     if (tempFolder != null && Directory.Exists(tempFolder))
+                    {
                         Directory.Delete(tempFolder, true);
+                    }
 
                     OutputTextBox.Text = GetInnerException(ex);
                 }
@@ -116,8 +120,8 @@ namespace OfficeConverterTestTool
         #region GetTemporaryFolder
         public string GetTemporaryFolder()
         {
-            var tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDirectory);
+            string tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDirectory);
             return tempDirectory;
         }
         #endregion
@@ -130,9 +134,12 @@ namespace OfficeConverterTestTool
         /// <returns></returns>
         public static string GetInnerException(Exception e)
         {
-            var exception = e.Message + Environment.NewLine;
+            string exception = e.Message + Environment.NewLine;
             if (e.InnerException != null)
+            {
                 exception += GetInnerException(e.InnerException);
+            }
+
             return exception;
         }
         #endregion

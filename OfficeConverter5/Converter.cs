@@ -2,148 +2,111 @@
 using System.IO;
 using System.Reflection;
 using System.Xml;
+
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+
 using PasswordProtectedChecker;
+
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-//
 // Converter.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
 // Copyright (c) 2014-2021 Magic-Sessions. (www.magic-sessions.com)
 //
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+// associated documentation files (the "Software"), to deal in the Software without restriction,
+// including without limitation the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in all copies or
+// substantial portions of the Software.
 //
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+// NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON
+// INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
+// OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace OfficeConverter
 {
     /// <summary>
-    ///     With this class an Microsoft Office document can be converted to PDF format. Microsoft Office 2007
-    ///     (with PDF export plugin) or higher is needed.
+    /// With this class an Microsoft Office document can be converted to PDF format. Microsoft
+    /// Office 2007 (with PDF export plugin) or higher is needed.
     /// </summary>
     public class Converter : IDisposable
     {
         #region Fields
-        /// <summary>
-        ///     <see cref="Checker"/>
-        /// </summary>
-        private readonly Checker _passwordProtectedChecker = new Checker();
 
         /// <summary>
-        ///     <see cref="Word"/>
+        /// <see cref="Checker"/>
         /// </summary>
-        private Word _word;
+        private readonly Checker _passwordProtectedChecker = new();
 
         /// <summary>
-        ///     <see cref="Excel"/>
+        /// Keeps track is we already disposed our resources
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
+        /// <see cref="Excel"/>
         /// </summary>
         private Excel _excel;
 
         /// <summary>
-        ///     <see cref="PowerPoint"/>
-        /// </summary>
-        private PowerPoint _powerPoint;
-
-        /// <summary>
-        ///     <see cref="LibreOffice"/>
+        /// <see cref="LibreOffice"/>
         /// </summary>
         private LibreOffice _libreOffice;
 
         /// <summary>
-        ///     Keeps track is we already disposed our resources
+        /// <see cref="PowerPoint"/>
         /// </summary>
-        private bool _disposed;
-        #endregion
+        private PowerPoint _powerPoint;
+
+        /// <summary>
+        /// <see cref="Word"/>
+        /// </summary>
+        private Word _word;
+
+        #endregion Fields
 
         #region Properties
+
         /// <summary>
-        ///     An unique id that can be used to identify the logging of the converter when
-        ///     calling the code from multiple threads and writing all the logging to the same file
+        /// An unique id that can be used to identify the logging of the converter when calling the
+        /// code from multiple threads and writing all the logging to the same file
         /// </summary>
         // ReSharper disable once UnusedMember.Global
-        public string InstanceId
+        public static string InstanceId
         {
             get => Logger.InstanceId;
             set => Logger.InstanceId = value;
         }
 
         /// <summary>
-        ///     When set then this directory is used to store temporary files
+        /// When set to <c> true </c> then the <see cref="TempDirectory"/> will not be deleted when
+        /// the extraction is done
+        /// </summary>
+        /// <remarks> For debugging perpeses </remarks>
+        public bool DoNotDeleteTempDirectory { get; set; }
+
+        /// <summary>
+        /// When set then this directory is used to store temporary files
         /// </summary>
         public string TempDirectory { get; set; }
 
         /// <summary>
-        ///     When set to <c>true</c> then the <see cref="TempDirectory"/>
-        ///     will not be deleted when the extraction is done
-        /// </summary>
-        /// <remarks>
-        ///     For debugging perpeses
-        /// </remarks>
-        public bool DoNotDeleteTempDirectory { get; set; }
-
-        /// <summary>
-        ///     When set then LibreOffice is used to do the conversion instead of Microsoft Office
+        /// When set then LibreOffice is used to do the conversion instead of Microsoft Office
         /// </summary>
         public bool UseLibreOffice { get; set; }
 
         /// <summary>
-        /// Returns a reference to the LibreOffice class when it already exists or creates a new one
-        /// when it doesn't
-        /// </summary>
-        private LibreOffice LibreOffice
-        {
-            get
-            {
-                if (_libreOffice != null)
-                {
-                    return _libreOffice;
-                }
-
-                _libreOffice = new LibreOffice();
-                return _libreOffice;
-            }
-        }
-
-        /// <summary>
-        /// Returns a reference to the Word class when it already exists or creates a new one
-        /// when it doesn't
-        /// </summary>
-        private Word Word
-        {
-            get
-            {
-                if (_word != null)
-                {
-                    return _word;
-                }
-
-                _word = new Word();
-                return _word;
-            }
-        }
-
-        /// <summary>
-        /// Returns a reference to the Excel class when it already exists or creates a new one
-        /// when it doesn't
+        /// Returns a reference to the Excel class when it already exists or creates a new one when
+        /// it doesn't
         /// </summary>
         private Excel Excel
         {
@@ -167,6 +130,23 @@ namespace OfficeConverter
             }
         }
 
+        /// <summary>
+        /// Returns a reference to the LibreOffice class when it already exists or creates a new one
+        /// when it doesn't
+        /// </summary>
+        private LibreOffice LibreOffice
+        {
+            get
+            {
+                if (_libreOffice != null)
+                {
+                    return _libreOffice;
+                }
+
+                _libreOffice = new LibreOffice();
+                return _libreOffice;
+            }
+        }
 
         /// <summary>
         /// Returns a reference to the PowerPoint class when it already exists or creates a new one
@@ -185,36 +165,60 @@ namespace OfficeConverter
                 return _powerPoint;
             }
         }
-        #endregion
+
+        /// <summary>
+        /// Returns a reference to the Word class when it already exists or creates a new one when
+        /// it doesn't
+        /// </summary>
+        private Word Word
+        {
+            get
+            {
+                if (_word != null)
+                {
+                    return _word;
+                }
+
+                _word = new Word();
+                return _word;
+            }
+        }
+
+        #endregion Properties
 
         #region Constructor
+
         /// <summary>
-        ///     Creates this object and sets it's needed properties
+        /// Creates this object and sets it's needed properties
         /// </summary>
-        /// <param name="logStream">When set then logging is written to this stream for all conversions. If
-        /// you want a separate log for each conversion then set the logstream on the <see cref="Convert"/> method</param>
+        /// <param name="logStream">
+        /// When set then logging is written to this stream for all conversions. If you want a
+        /// separate log for each conversion then set the logstream on the <see cref="Convert"/> method
+        /// </param>
         public Converter(Stream logStream = null)
         {
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomainAssemblyResolve;
             Logger.LogStream = logStream;
         }
-        #endregion
+
+        #endregion Constructor
 
         #region CheckFileNameAndOutputFolder
+
         /// <summary>
-        ///     Checks if the <paramref name="inputFile" /> and the folder where the <paramref name="outputFile" /> is written
-        ///     exists
+        /// Checks if the <paramref name="inputFile"/> and the folder where the <paramref
+        /// name="outputFile"/> is written exists
         /// </summary>
-        /// <param name="inputFile"></param>
-        /// <param name="outputFile"></param>
+        /// <param name="inputFile"> </param>
+        /// <param name="outputFile"> </param>
         /// <exception cref="ArgumentNullException">
-        ///     Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
-        ///     is null or empty
+        /// Raised when the <paramref name="inputFile"/> or <paramref name="outputFile"/> is null or empty
         /// </exception>
-        /// <exception cref="FileNotFoundException">Raised when the <paramref name="inputFile" /> does not exists</exception>
+        /// <exception cref="FileNotFoundException">
+        /// Raised when the <paramref name="inputFile"/> does not exists
+        /// </exception>
         /// <exception cref="DirectoryNotFoundException">
-        ///     Raised when the folder where the <paramref name="outputFile" /> is written
-        ///     does not exists
+        /// Raised when the folder where the <paramref name="outputFile"/> is written does not exists
         /// </exception>
         private static void CheckFileNameAndOutputFolder(string inputFile, string outputFile)
         {
@@ -250,39 +254,53 @@ namespace OfficeConverter
                 throw new DirectoryNotFoundException(message);
             }
         }
-        #endregion
+
+        #endregion CheckFileNameAndOutputFolder
 
         #region ThrowPasswordProtected
-        private void ThrowPasswordProtected(string inputFile)
+
+        private static void ThrowPasswordProtected(string inputFile)
         {
             string message = "The file '" + Path.GetFileName(inputFile) +
                           "' is password protected";
             Logger.WriteToLog(message);
             throw new OCFileIsPasswordProtected(message);
         }
-        #endregion
+
+        #endregion ThrowPasswordProtected
 
         #region Convert
+
         /// <summary>
-        ///     Converts the <paramref name="inputFile" /> to PDF and saves it as the <paramref name="outputFile" />
+        /// Converts the <paramref name="inputFile"/> to PDF and saves it as the <paramref name="outputFile"/>
         /// </summary>
-        /// <param name="inputFile">The Microsoft Office file</param>
-        /// <param name="outputFile">The output file with full path</param>
-        /// <param name="logStream">When set then logging is written to this stream</param>
+        /// <param name="inputFile"> The Microsoft Office file </param>
+        /// <param name="outputFile"> The output file with full path </param>
+        /// <param name="logStream"> When set then logging is written to this stream </param>
         /// <exception cref="ArgumentNullException">
-        ///     Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
-        ///     is null or empty
+        /// Raised when the <paramref name="inputFile"/> or <paramref name="outputFile"/> is null or empty
         /// </exception>
-        /// <exception cref="FileNotFoundException">Raised when the <paramref name="inputFile" /> does not exist</exception>
+        /// <exception cref="FileNotFoundException">
+        /// Raised when the <paramref name="inputFile"/> does not exist
+        /// </exception>
         /// <exception cref="DirectoryNotFoundException">
-        ///     Raised when the folder where the <paramref name="outputFile" /> is written
-        ///     does not exists
+        /// Raised when the folder where the <paramref name="outputFile"/> is written does not exists
         /// </exception>
-        /// <exception cref="OCFileIsCorrupt">Raised when the <paramref name="inputFile" /> is corrupt</exception>
-        /// <exception cref="OCFileTypeNotSupported">Raised when the <paramref name="inputFile" /> is not supported</exception>
-        /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile" /> is password protected</exception>
-        /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
-        /// <exception cref="OCFileContainsNoData">Raised when the Microsoft Office file contains no actual data</exception>
+        /// <exception cref="OCFileIsCorrupt">
+        /// Raised when the <paramref name="inputFile"/> is corrupt
+        /// </exception>
+        /// <exception cref="OCFileTypeNotSupported">
+        /// Raised when the <paramref name="inputFile"/> is not supported
+        /// </exception>
+        /// <exception cref="OCFileIsPasswordProtected">
+        /// Raised when the <paramref name="inputFile"/> is password protected
+        /// </exception>
+        /// <exception cref="OCCsvFileLimitExceeded">
+        /// Raised when a CSV <paramref name="inputFile"/> has to many rows
+        /// </exception>
+        /// <exception cref="OCFileContainsNoData">
+        /// Raised when the Microsoft Office file contains no actual data
+        /// </exception>
         public void Convert(string inputFile, string outputFile, Stream logStream = null)
         {
             if (logStream != null)
@@ -303,16 +321,16 @@ namespace OfficeConverter
                 case ".DOCX":
                 case ".DOTM":
                 case ".ODT":
-                {
+                    {
                         Result result = _passwordProtectedChecker.IsFileProtected(inputFile);
-                    if (result.Protected)
+                        if (result.Protected)
                         {
                             ThrowPasswordProtected(inputFile);
                         }
 
                         if (UseLibreOffice)
                         {
-                            LibreOffice.Convert(inputFile,outputFile);
+                            LibreOffice.Convert(inputFile, outputFile);
                         }
                         else
                         {
@@ -320,7 +338,7 @@ namespace OfficeConverter
                         }
 
                         break;
-                }
+                    }
 
                 case ".RTF":
                 case ".MHT":
@@ -338,16 +356,16 @@ namespace OfficeConverter
                 case ".XLTM":
                 case ".XLTX":
                 case ".ODS":
-                {
+                    {
                         Result result = _passwordProtectedChecker.IsFileProtected(inputFile);
-                    if (result.Protected)
+                        if (result.Protected)
                         {
                             ThrowPasswordProtected(inputFile);
                         }
 
                         if (UseLibreOffice)
                         {
-                            LibreOffice.Convert(inputFile,outputFile);
+                            LibreOffice.Convert(inputFile, outputFile);
                         }
                         else
                         {
@@ -355,12 +373,12 @@ namespace OfficeConverter
                         }
 
                         break;
-                }
+                    }
 
                 case ".CSV":
                     if (UseLibreOffice)
                     {
-                        LibreOffice.Convert(inputFile,outputFile);
+                        LibreOffice.Convert(inputFile, outputFile);
                     }
                     else
                     {
@@ -379,10 +397,10 @@ namespace OfficeConverter
                 case ".PPTM":
                 case ".PPTX":
                 case ".ODP":
-                {
-                    if (UseLibreOffice)
+                    {
+                        if (UseLibreOffice)
                         {
-                            LibreOffice.Convert(inputFile,outputFile);
+                            LibreOffice.Convert(inputFile, outputFile);
                         }
                         else
                         {
@@ -390,7 +408,7 @@ namespace OfficeConverter
                         }
 
                         break;
-                }
+                    }
 
                 case ".XML":
                     string progId = GetProgId(inputFile);
@@ -414,9 +432,8 @@ namespace OfficeConverter
 
                     break;
 
-
                 default:
-                {
+                    {
                         string message = $"The file '{Path.GetFileName(inputFile)}' " +
                                   $"is not supported only, {Environment.NewLine}" +
                                   $".DOC, .DOT, .DOCM, .DOCX, .DOTM, .XML (Word or Excel) .ODT, .RTF, .MHT, {Environment.NewLine}" +
@@ -424,24 +441,26 @@ namespace OfficeConverter
                                   $".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, {Environment.NewLine}" +
                                    ".POTX, .PPSM, .PPSX, .PPTM, .PPTX and .ODP are supported";
 
-                    Logger.WriteToLog(message);
-                    throw new OCFileTypeNotSupported(message);
-                }
+                        Logger.WriteToLog(message);
+                        throw new OCFileTypeNotSupported(message);
+                    }
             }
         }
-        #endregion
+
+        #endregion Convert
 
         #region GetProgId
+
         /// <summary>
-        /// Returns the progid that is inside the XML or <c>null</c> when not found
+        /// Returns the progid that is inside the XML or <c> null </c> when not found
         /// </summary>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        private string GetProgId(string fileName)
+        /// <param name="fileName"> </param>
+        /// <returns> </returns>
+        private static string GetProgId(string fileName)
         {
             try
             {
-                XmlDocument doc = new XmlDocument();
+                XmlDocument doc = new();
                 doc.Load(fileName);
                 if (doc.HasChildNodes)
                 {
@@ -450,7 +469,7 @@ namespace OfficeConverter
                     {
                         case "progid=\"Word.Document\"":
                             return "Word";
-                        
+
                         case "progid=\"Excel.Sheet\"":
                             return "Excel";
                     }
@@ -463,18 +482,20 @@ namespace OfficeConverter
 
             return null;
         }
-        #endregion
+
+        #endregion GetProgId
 
         #region CurrentDomainAssemblyResolve
+
         /// <summary>
         /// Event to resolve 32 or 64 bits dll
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="args"></param>
-        /// <returns></returns>
+        /// <param name="sender"> </param>
+        /// <param name="args"> </param>
+        /// <returns> </returns>
         private Assembly CurrentDomainAssemblyResolve(object sender, ResolveEventArgs args)
         {
-            string assemblyName = args.Name.Split(new[] {','}, 2)[0] + ".dll";
+            string assemblyName = args.Name.Split(new[] { ',' }, 2)[0] + ".dll";
             string path = Path.Combine(AppDomain.CurrentDomain.SetupInformation.ApplicationBase, "CLI",
                 Environment.Is64BitProcess ? "x64" : "x86", assemblyName);
 
@@ -482,13 +503,15 @@ namespace OfficeConverter
                 ? Assembly.LoadFile(path)
                 : null;
         }
-        #endregion
+
+        #endregion CurrentDomainAssemblyResolve
 
         #region Dispose
+
         /// <summary>
-        ///     Disposes all created office objects
+        /// Disposes all created office objects
         /// </summary>
-        public void Dispose()
+        void IDisposable.Dispose()
         {
             if (_disposed)
             {
@@ -523,6 +546,7 @@ namespace OfficeConverter
                 _libreOffice.Dispose();
             }
         }
-        #endregion
+
+        #endregion Dispose
     }
 }

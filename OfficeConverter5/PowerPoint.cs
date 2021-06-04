@@ -3,72 +3,73 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+
 using Microsoft.Office.Core;
 using Microsoft.Win32;
+
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+
 using PowerPointInterop = Microsoft.Office.Interop.PowerPoint;
 
-//
 // PowerPoint.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
 // Copyright (c) 2014-2021 Magic-Sessions. (www.magic-sessions.com)
 //
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+// associated documentation files (the "Software"), to deal in the Software without restriction,
+// including without limitation the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in all copies or
+// substantial portions of the Software.
 //
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+// NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON
+// INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
+// OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace OfficeConverter
 {
     /// <summary>
-    ///     This class is used as a placeholder for all PowerPoint related methods
+    /// This class is used as a placeholder for all PowerPoint related methods
     /// </summary>
     internal class PowerPoint : IDisposable
     {
         #region Fields
+
         /// <summary>
-        ///     PowerPoint version number
+        /// PowerPoint version number
         /// </summary>
         private readonly int _versionNumber;
-        
+
         /// <summary>
-        ///     <see cref="PowerPointInterop.ApplicationClass" />
+        /// Keeps track is we already disposed our resources
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
+        /// <see cref="PowerPointInterop.ApplicationClass"/>
         /// </summary>
         private PowerPointInterop.ApplicationClass _powerPoint;
 
         /// <summary>
-        ///     A <see cref="Process" /> object to PowerPoint
+        /// A <see cref="Process"/> object to PowerPoint
         /// </summary>
         private Process _powerPointProcess;
 
-        /// <summary>
-        ///     Keeps track is we already disposed our resources
-        /// </summary>
-        private bool _disposed;
-        #endregion
+        #endregion Fields
 
         #region Properties
+
         /// <summary>
-        ///     Returns <c>true</c> when PowerPoint is running
+        /// Returns <c> true </c> when PowerPoint is running
         /// </summary>
-        /// <returns></returns>
+        /// <returns> </returns>
         private bool IsPowerPointRunning
         {
             get
@@ -82,13 +83,17 @@ namespace OfficeConverter
                 return !_powerPointProcess.HasExited;
             }
         }
-        #endregion
+
+        #endregion Properties
 
         #region Constructor
+
         /// <summary>
-        ///     This constructor checks to see if all requirements for a successful conversion are here.
+        /// This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
-        /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine PowerPoint version</exception>
+        /// <exception cref="OCConfiguration">
+        /// Raised when the registry could not be read to determine PowerPoint version
+        /// </exception>
         internal PowerPoint()
         {
             Logger.WriteToLog("Checking what version of PowerPoint is installed");
@@ -97,54 +102,35 @@ namespace OfficeConverter
             {
                 RegistryKey baseKey = Registry.ClassesRoot;
                 RegistryKey subKey = baseKey.OpenSubKey(@"PowerPoint.Application\CurVer");
-                if (subKey != null)
-                {
-                    switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
+                _versionNumber = subKey != null
+                    ? subKey.GetValue(string.Empty).ToString().ToUpperInvariant() switch
                     {
                         // PowerPoint 2003
-                        case "POWERPOINT.APPLICATION.11":
-                            _versionNumber = 11;
-                            break;
-
+                        "POWERPOINT.APPLICATION.11" => 11,
                         // PowerPoint 2007
-                        case "POWERPOINT.APPLICATION.12":
-                            _versionNumber = 12;
-                            break;
-
+                        "POWERPOINT.APPLICATION.12" => 12,
                         // PowerPoint 2010
-                        case "POWERPOINT.APPLICATION.14":
-                            _versionNumber = 14;
-                            break;
-
+                        "POWERPOINT.APPLICATION.14" => 14,
                         // PowerPoint 2013
-                        case "POWERPOINT.APPLICATION.15":
-                            _versionNumber = 15;
-                            break;
-
+                        "POWERPOINT.APPLICATION.15" => 15,
                         // PowerPoint 2016
-                        case "POWERPOINT.APPLICATION.16":
-                            _versionNumber = 16;
-                            break;
-
-                        default:
-                            throw new OCConfiguration("Could not determine PowerPoint version");
+                        "POWERPOINT.APPLICATION.16" => 16,
+                        _ => throw new OCConfiguration("Could not determine PowerPoint version"),
                     }
-                }
-                else
-                {
-                    throw new OCConfiguration("Could not find registry key PowerPoint.Application\\CurVer");
-                }
+                    : throw new OCConfiguration("Could not find registry key PowerPoint.Application\\CurVer");
             }
             catch (Exception exception)
             {
                 throw new OCConfiguration("Could not read registry to check PowerPoint version", exception);
             }
         }
-        #endregion
+
+        #endregion Constructor
 
         #region StartPowerPoint
+
         /// <summary>
-        ///     Starts PowerPoint
+        /// Starts PowerPoint
         /// </summary>
         private void StartPowerPoint()
         {
@@ -165,26 +151,28 @@ namespace OfficeConverter
 
             _ = ProcessHelpers.GetWindowThreadProcessId(_powerPoint.HWND, out int processId);
             _powerPointProcess = Process.GetProcessById(processId);
-        
+
             Logger.WriteToLog($"PowerPoint started with process id {_powerPointProcess.Id}");
         }
-        #endregion
+
+        #endregion StartPowerPoint
 
         #region StopPowerPoint
+
         /// <summary>
-        ///     Stops PowerPoint
+        /// Stops PowerPoint
         /// </summary>
         private void StopPowerPoint()
         {
             if (IsPowerPointRunning)
             {
                 Logger.WriteToLog("Stopping PowerPoint");
-                
+
                 try
                 {
                     _powerPoint.Quit();
                 }
-                catch(Exception exception)
+                catch (Exception exception)
                 {
                     Logger.WriteToLog($"PowerPoint did not shutdown gracefully, exception: {ExceptionHelpers.GetInnerException(exception)}");
                 }
@@ -227,15 +215,17 @@ namespace OfficeConverter
             GC.Collect();
             GC.WaitForPendingFinalizers();
         }
-        #endregion
+
+        #endregion StopPowerPoint
 
         #region Convert
+
         /// <summary>
-        ///     Converts a PowerPoint document to PDF
+        /// Converts a PowerPoint document to PDF
         /// </summary>
-        /// <param name="inputFile">The PowerPoint input file</param>
-        /// <param name="outputFile">The PDF output file</param>
-        /// <returns></returns>
+        /// <param name="inputFile"> The PowerPoint input file </param>
+        /// <param name="outputFile"> The PDF output file </param>
+        /// <returns> </returns>
         internal void Convert(string inputFile, string outputFile)
         {
             DeleteResiliencyKeys();
@@ -262,18 +252,22 @@ namespace OfficeConverter
                 ClosePresentation(presentation);
             }
         }
-        #endregion
+
+        #endregion Convert
 
         #region OpenPresentation
+
         /// <summary>
-        ///     Opens the <paramref name="inputFile" /> and returns it as an <see cref="PowerPointInterop.Presentation" /> object
+        /// Opens the <paramref name="inputFile"/> and returns it as an <see
+        /// cref="PowerPointInterop.Presentation"/> object
         /// </summary>
-        /// <param name="inputFile">The file to open</param>
-        /// <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
-        /// <returns></returns>
+        /// <param name="inputFile"> The file to open </param>
+        /// <param name="repairMode">
+        /// When true the <paramref name="inputFile"/> is opened in repair mode
+        /// </param>
+        /// <returns> </returns>
         /// <exception cref="OCFileIsCorrupt">
-        ///     Raised when the <paramref name="inputFile" /> is corrupt and can't be opened in
-        ///     repair mode
+        /// Raised when the <paramref name="inputFile"/> is corrupt and can't be opened in repair mode
         /// </exception>
         private PowerPointInterop.Presentation OpenPresentation(string inputFile, bool repairMode)
         {
@@ -291,13 +285,15 @@ namespace OfficeConverter
                     : OpenPresentation(inputFile, true);
             }
         }
-        #endregion
+
+        #endregion OpenPresentation
 
         #region ClosePresentation
+
         /// <summary>
-        ///     Closes the opened presentation and releases any allocated resources
+        /// Closes the opened presentation and releases any allocated resources
         /// </summary>
-        private void ClosePresentation(PowerPointInterop.Presentation presentation)
+        private static void ClosePresentation(PowerPointInterop.Presentation presentation)
         {
             if (presentation == null)
             {
@@ -310,13 +306,16 @@ namespace OfficeConverter
             _ = Marshal.ReleaseComObject(presentation);
             Logger.WriteToLog("Presentation closed");
         }
-        #endregion
+
+        #endregion ClosePresentation
 
         #region DeleteResiliencyKeys
+
         /// <summary>
-        ///     This method will delete the automatic created Resiliency key. PowerPoint uses this registry key
-        ///     to make entries to corrupted presentations. If there are to many entries under this key PowerPoint will
-        ///     get slower and slower to start. To prevent this we just delete this key when it exists
+        /// This method will delete the automatic created Resiliency key. PowerPoint uses this
+        /// registry key to make entries to corrupted presentations. If there are to many entries
+        /// under this key PowerPoint will get slower and slower to start. To prevent this we just
+        /// delete this key when it exists
         /// </summary>
         private void DeleteResiliencyKeys()
         {
@@ -342,11 +341,13 @@ namespace OfficeConverter
                 Logger.WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
         }
-        #endregion
+
+        #endregion DeleteResiliencyKeys
 
         #region Dispose
+
         /// <summary>
-        ///     Disposes the running <see cref="_powerPoint" />
+        /// Disposes the running <see cref="_powerPoint"/>
         /// </summary>
         public void Dispose()
         {
@@ -358,6 +359,7 @@ namespace OfficeConverter
             _disposed = true;
             StopPowerPoint();
         }
-        #endregion
+
+        #endregion Dispose
     }
 }

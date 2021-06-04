@@ -3,72 +3,73 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+
 using Microsoft.Office.Core;
 using Microsoft.Win32;
+
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+
 using WordInterop = Microsoft.Office.Interop.Word;
 
-//
 // Word.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
 // Copyright (c) 2014-2021 Magic-Sessions. (www.magic-sessions.com)
 //
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+// associated documentation files (the "Software"), to deal in the Software without restriction,
+// including without limitation the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in all copies or
+// substantial portions of the Software.
 //
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+// NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON
+// INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
+// OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace OfficeConverter
 {
     /// <summary>
-    ///     This class is used as a placeholder for all Word related methods
+    /// This class is used as a placeholder for all Word related methods
     /// </summary>
     internal class Word : IDisposable
     {
         #region Fields
+
         /// <summary>
-        ///     Word version number
+        /// Word version number
         /// </summary>
         private readonly int _versionNumber;
 
         /// <summary>
-        ///     <see cref="WordInterop.ApplicationClass" />
+        /// Keeps track is we already disposed our resources
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
+        /// <see cref="WordInterop.ApplicationClass"/>
         /// </summary>
         private WordInterop.ApplicationClass _word;
 
         /// <summary>
-        ///     A <see cref="Process" /> object to Word
+        /// A <see cref="Process"/> object to Word
         /// </summary>
         private Process _wordProcess;
 
-        /// <summary>
-        ///     Keeps track is we already disposed our resources
-        /// </summary>
-        private bool _disposed;
-        #endregion
+        #endregion Fields
 
         #region Properties
+
         /// <summary>
-        ///     Returns <c>true</c> when Word is running
+        /// Returns <c> true </c> when Word is running
         /// </summary>
-        /// <returns></returns>
+        /// <returns> </returns>
         private bool IsWordRunning
         {
             get
@@ -82,13 +83,17 @@ namespace OfficeConverter
                 return !_wordProcess.HasExited;
             }
         }
-        #endregion
+
+        #endregion Properties
 
         #region Constructor
+
         /// <summary>
-        ///     This constructor checks to see if all requirements for a successful conversion are here.
+        /// This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
-        /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
+        /// <exception cref="OCConfiguration">
+        /// Raised when the registry could not be read to determine Word version
+        /// </exception>
         internal Word()
         {
             Logger.WriteToLog("Checking what version of Word is installed");
@@ -151,11 +156,13 @@ namespace OfficeConverter
                 throw new OCConfiguration("Could not read registry to check Word version", exception);
             }
         }
-        #endregion
+
+        #endregion Constructor
 
         #region StartWord
+
         /// <summary>
-        ///     Starts Word
+        /// Starts Word
         /// </summary>
         private void StartWord()
         {
@@ -206,11 +213,13 @@ namespace OfficeConverter
 
             Logger.WriteToLog($"Word started with process id {_wordProcess.Id}");
         }
-        #endregion
+
+        #endregion StartWord
 
         #region StopWord
+
         /// <summary>
-        ///     Stops Word
+        /// Stops Word
         /// </summary>
         private void StopWord()
         {
@@ -222,7 +231,7 @@ namespace OfficeConverter
                 {
                     _word.Quit(false);
                 }
-                catch(Exception exception)
+                catch (Exception exception)
                 {
                     Logger.WriteToLog($"Word did not shutdown gracefully, exception: {ExceptionHelpers.GetInnerException(exception)}");
                 }
@@ -264,15 +273,17 @@ namespace OfficeConverter
             GC.Collect();
             GC.WaitForPendingFinalizers();
         }
-        #endregion
+
+        #endregion StopWord
 
         #region Convert
+
         /// <summary>
-        ///     Converts a Word document to PDF
+        /// Converts a Word document to PDF
         /// </summary>
-        /// <param name="inputFile">The Word input file</param>
-        /// <param name="outputFile">The PDF output file</param>
-        /// <returns></returns>
+        /// <param name="inputFile"> The Word input file </param>
+        /// <param name="outputFile"> The PDF output file </param>
+        /// <returns> </returns>
         internal void Convert(string inputFile, string outputFile)
         {
             DeleteResiliencyKeys();
@@ -283,14 +294,13 @@ namespace OfficeConverter
             {
                 StartWord();
 
-                document = (WordInterop.DocumentClass) OpenDocument(inputFile, false);
+                document = (WordInterop.DocumentClass)OpenDocument(inputFile, false);
 
-                // Do not remove this line!!
-                // This is yet another solution to a weird Office problem. Sometimes there
-                // are Word documents with images in it that take some time to load. When
-                // we remove the line below the ExportAsFixedFormat method will be called 
-                // before the images are loaded thus resulting in an un endless loop somewhere
-                // in this method.
+                // Do not remove this line!! This is yet another solution to a weird Office problem.
+                // Sometimes there are Word documents with images in it that take some time to load.
+                // When we remove the line below the ExportAsFixedFormat method will be called
+                // before the images are loaded thus resulting in an un endless loop somewhere in
+                // this method.
                 // ReSharper disable once UnusedVariable
                 int count = document.ComputeStatistics(WordInterop.WdStatistic.wdStatisticPages);
 
@@ -308,15 +318,20 @@ namespace OfficeConverter
                 CloseDocument(document);
             }
         }
-        #endregion
+
+        #endregion Convert
 
         #region OpenDocument
+
         /// <summary>
-        ///     Opens the <paramref name="inputFile" /> and returns it as an <see cref="WordInterop.Document" /> object
+        /// Opens the <paramref name="inputFile"/> and returns it as an <see
+        /// cref="WordInterop.Document"/> object
         /// </summary>
-        /// <param name="inputFile">The file to open</param>
-        /// <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
-        /// <returns></returns>
+        /// <param name="inputFile"> The file to open </param>
+        /// <param name="repairMode">
+        /// When true the <paramref name="inputFile"/> is opened in repair mode
+        /// </param>
+        /// <returns> </returns>
         private WordInterop.Document OpenDocument(string inputFile, bool repairMode)
         {
             Logger.WriteToLog($"Opening document '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
@@ -336,8 +351,8 @@ namespace OfficeConverter
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
 
-                // This will lock or unlock all form fields in a Word document so that auto fill 
-                // and date/time field do or don't get updated automatic when converting
+                // This will lock or unlock all form fields in a Word document so that auto fill and
+                // date/time field do or don't get updated automatic when converting
                 if (document.Fields.Count > 0)
                 {
                     Logger.WriteToLog("Locking all form fields against modifications");
@@ -360,14 +375,16 @@ namespace OfficeConverter
                     : OpenDocument(inputFile, true);
             }
         }
-        #endregion
+
+        #endregion OpenDocument
 
         #region CloseDocument
+
         /// <summary>
-        ///     Closes the opened document and releases any allocated resources
+        /// Closes the opened document and releases any allocated resources
         /// </summary>
-        /// <param name="document">The Word document</param>
-        private void CloseDocument(WordInterop.Document document)
+        /// <param name="document"> The Word document </param>
+        private static void CloseDocument(WordInterop.Document document)
         {
             if (document == null)
             {
@@ -380,13 +397,16 @@ namespace OfficeConverter
             _ = Marshal.ReleaseComObject(document);
             Logger.WriteToLog("Document closed");
         }
-        #endregion
+
+        #endregion CloseDocument
 
         #region DeleteResiliencyKeys
+
         /// <summary>
-        ///     This method will delete the automatic created Resiliency key. Word uses this registry key
-        ///     to make entries to corrupted documents. If there are to many entries under this key Word will
-        ///     get slower and slower to start. To prevent this we just delete this key when it exists
+        /// This method will delete the automatic created Resiliency key. Word uses this registry
+        /// key to make entries to corrupted documents. If there are to many entries under this key
+        /// Word will get slower and slower to start. To prevent this we just delete this key when
+        /// it exists
         /// </summary>
         private void DeleteResiliencyKeys()
         {
@@ -412,11 +432,13 @@ namespace OfficeConverter
                 Logger.WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
         }
-        #endregion
+
+        #endregion DeleteResiliencyKeys
 
         #region Dispose
+
         /// <summary>
-        ///     Disposes the running <see cref="_word" />
+        /// Disposes the running <see cref="_word"/>
         /// </summary>
         public void Dispose()
         {
@@ -428,6 +450,7 @@ namespace OfficeConverter
             _disposed = true;
             StopWord();
         }
-        #endregion
+
+        #endregion Dispose
     }
 }

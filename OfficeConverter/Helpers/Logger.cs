@@ -56,11 +56,15 @@ namespace OfficeConverter.Helpers
         {
             try
             {
-                if (LogStream == null || !LogStream.CanWrite) return;
-                var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
+                if (LogStream == null || !LogStream.CanWrite)
+                {
+                    return;
+                }
+
+                string line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
                            (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
                            message + Environment.NewLine;
-                var bytes = Encoding.UTF8.GetBytes(line);
+                byte[] bytes = Encoding.UTF8.GetBytes(line);
                 LogStream.Write(bytes, 0, bytes.Length);
                 LogStream.Flush();
             }

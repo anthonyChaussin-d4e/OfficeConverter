@@ -2,78 +2,81 @@
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+
 using Microsoft.Win32;
+
 using OfficeConverter.Helpers;
+
 using uno;
 using uno.util;
+
 using unoidl.com.sun.star.beans;
 using unoidl.com.sun.star.bridge;
 using unoidl.com.sun.star.frame;
 using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.uno;
 using unoidl.com.sun.star.util;
+
 using Exception = System.Exception;
 
-//
 // LibreOffice.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
 // Copyright (c) 2014-2021 Magic-Sessions. (www.magic-sessions.com)
 //
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+// associated documentation files (the "Software"), to deal in the Software without restriction,
+// including without limitation the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in all copies or
+// substantial portions of the Software.
 //
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+// NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON
+// INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
+// OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace OfficeConverter
 {
     /// <summary>
-    ///     This class is used as a placeholder for all Libre office related methods
+    /// This class is used as a placeholder for all Libre office related methods
     /// </summary>
     /// <remarks>
-    ///     - https://api.libreoffice.org/examples/examples.html
-    ///     - https://api.libreoffice.org/docs/install.html
-    ///     - https://www.libreoffice.org/download/download/
+    /// - https://api.libreoffice.org/examples/examples.html
+    /// - https://api.libreoffice.org/docs/install.html
+    /// - https://www.libreoffice.org/download/download/
     /// </remarks>
     internal class LibreOffice : IDisposable
     {
         #region Fields
-        /// <summary>
-        ///     A <see cref="Process" /> object to LibreOffice
-        /// </summary>
-        private Process _libreOfficeProcess;
 
         /// <summary>
-        ///     <see cref="XComponentLoader"/>
+        /// <see cref="XComponentLoader"/>
         /// </summary>
         private XComponentLoader _componentLoader;
 
         /// <summary>
-        ///     Keeps track is we already disposed our resources
+        /// Keeps track is we already disposed our resources
         /// </summary>
         private bool _disposed;
-        #endregion
+
+        /// <summary>
+        /// A <see cref="Process"/> object to LibreOffice
+        /// </summary>
+        private Process _libreOfficeProcess;
+
+        #endregion Fields
 
         #region Properties
+
         /// <summary>
-        ///     Returns the full path to LibreOffice, when not found <c>null</c> is returned
+        /// Returns the full path to LibreOffice, when not found <c> null </c> is returned
         /// </summary>
-        private string GetInstallPath
+        private static string GetInstallPath
         {
             get
             {
@@ -97,10 +100,11 @@ namespace OfficeConverter
         }
 
         #region Properties
+
         /// <summary>
-        ///     Returns <c>true</c> when LibreOffice is running
+        /// Returns <c> true </c> when LibreOffice is running
         /// </summary>
-        /// <returns></returns>
+        /// <returns> </returns>
         private bool IsLibreOfficeRunning
         {
             get
@@ -114,12 +118,15 @@ namespace OfficeConverter
                 return !_libreOfficeProcess.HasExited;
             }
         }
-        #endregion
-        #endregion
+
+        #endregion Properties
+
+        #endregion Properties
 
         #region StartLibreOffice
+
         /// <summary>
-        ///     Checks if LibreOffice is started and if not starts it
+        /// Checks if LibreOffice is started and if not starts it
         /// </summary>
         private void StartLibreOffice()
         {
@@ -156,7 +163,7 @@ namespace OfficeConverter
 
             string pipeName = Guid.NewGuid().ToString().Replace("-", string.Empty);
 
-            Process process = new Process
+            Process process = new()
             {
                 StartInfo =
                 {
@@ -178,13 +185,15 @@ namespace OfficeConverter
 
             OpenLibreOfficePipe(pipeName);
         }
-        #endregion
+
+        #endregion StartLibreOffice
 
         #region OpenLibreOfficePipe
+
         /// <summary>
-        ///     Opens a pipe to LibreOffice
+        /// Opens a pipe to LibreOffice
         /// </summary>
-        /// <param name="pipeName"></param>
+        /// <param name="pipeName"> </param>
         private void OpenLibreOfficePipe(string pipeName)
         {
             XComponentContext localContext = Bootstrap.defaultBootstrap_InitialComponentContext();
@@ -220,11 +229,13 @@ namespace OfficeConverter
             XMultiServiceFactory remoteFactory = (XMultiServiceFactory)remoteContext.getServiceManager();
             _componentLoader = (XComponentLoader)remoteFactory.createInstance("com.sun.star.frame.Desktop");
         }
-        #endregion
+
+        #endregion OpenLibreOfficePipe
 
         #region StopLibreOffice
+
         /// <summary>
-        ///     Stops LibreOffice
+        /// Stops LibreOffice
         /// </summary>
         private void StopLibreOffice()
         {
@@ -241,26 +252,30 @@ namespace OfficeConverter
 
             _libreOfficeProcess = null;
         }
-        #endregion
+
+        #endregion StopLibreOffice
 
         #region ConvertToUrl
+
         /// <summary>
-        ///     Convert the give file path to the format LibreOffice needs
+        /// Convert the give file path to the format LibreOffice needs
         /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
-        private string ConvertToUrl(string file)
+        /// <param name="file"> </param>
+        /// <returns> </returns>
+        private static string ConvertToUrl(string file)
         {
             return $"file:///{file.Replace(@"\", "/")}";
         }
-        #endregion
+
+        #endregion ConvertToUrl
 
         #region Convert
+
         /// <summary>
-        ///     Converts the given <paramref name="inputFile" /> to PDF format and saves it as <paramref name="outputFile" />
+        /// Converts the given <paramref name="inputFile"/> to PDF format and saves it as <paramref name="outputFile"/>
         /// </summary>
-        /// <param name="inputFile">The input file</param>
-        /// <param name="outputFile">The output file</param>
+        /// <param name="inputFile"> The input file </param>
+        /// <param name="outputFile"> The output file </param>
         public void Convert(string inputFile, string outputFile)
         {
             if (GetFilterType(Path.GetExtension(inputFile)) == null)
@@ -273,24 +288,25 @@ namespace OfficeConverter
             XComponent component = InitDocument(_componentLoader, ConvertToUrl(inputFile), "_blank");
 
             // Save/export the document
-            // http://herbertniemeyerblog.blogspot.com/2011/11/have-to-start-somewhere.html
-            // https://forum.openoffice.org/en/forum/viewtopic.php?t=73098
+            // http://herbertniemeyerblog.blogspot.com/2011/11/have-to-start-somewhere.html https://forum.openoffice.org/en/forum/viewtopic.php?t=73098
 
             ExportToPdf(component, inputFile, outputFile);
 
             CloseDocument(component);
         }
-        #endregion
+
+        #endregion Convert
 
         #region InitDocument
+
         /// <summary>
-        ///     Creates a new document in LibreOffice and opens the given <paramref name="inputFile" />
+        /// Creates a new document in LibreOffice and opens the given <paramref name="inputFile"/>
         /// </summary>
-        /// <param name="aLoader"></param>
-        /// <param name="inputFile"></param>
-        /// <param name="target"></param>
-        /// <returns></returns>
-        private XComponent InitDocument(XComponentLoader aLoader, string inputFile, string target)
+        /// <param name="aLoader"> </param>
+        /// <param name="inputFile"> </param>
+        /// <param name="target"> </param>
+        /// <returns> </returns>
+        private static XComponent InitDocument(XComponentLoader aLoader, string inputFile, string target)
         {
             Logger.WriteToLog($"Loading document '{inputFile}'");
 
@@ -306,16 +322,18 @@ namespace OfficeConverter
 
             return xComponent;
         }
-        #endregion
+
+        #endregion InitDocument
 
         #region ExportToPdf
+
         /// <summary>
-        ///     Exports the loaded document to PDF format
+        /// Exports the loaded document to PDF format
         /// </summary>
-        /// <param name="component"></param>
-        /// <param name="inputFile"></param>
-        /// <param name="outputFile"></param>
-        private void ExportToPdf(XComponent component, string inputFile, string outputFile)
+        /// <param name="component"> </param>
+        /// <param name="inputFile"> </param>
+        /// <param name="outputFile"> </param>
+        private static void ExportToPdf(XComponent component, string inputFile, string outputFile)
         {
             Logger.WriteToLog($"Exporting document to PDF file '{outputFile}'");
 
@@ -371,78 +389,52 @@ namespace OfficeConverter
 
             Logger.WriteToLog("Document exported to PDF");
         }
-        #endregion
+
+        #endregion ExportToPdf
 
         #region CloseDocument
+
         /// <summary>
-        ///     Closes the document and frees any used resources
+        /// Closes the document and frees any used resources
         /// </summary>
-        private void CloseDocument(XComponent component)
+        private static void CloseDocument(XComponent component)
         {
             Logger.WriteToLog("Closing document");
             XCloseable closeable = (XCloseable)component;
             closeable?.close(false);
             Logger.WriteToLog("Document closed");
         }
-        #endregion
+
+        #endregion CloseDocument
 
         #region GetFilterType
+
         /// <summary>
-        ///     Returns the filter that is needed to convert the given <paramref name="fileName" />,
-        ///     <c>null</c> is returned when the file cannot be converted
+        /// Returns the filter that is needed to convert the given <paramref name="fileName"/>, <c>
+        /// null </c> is returned when the file cannot be converted
         /// </summary>
-        /// <param name="fileName">The file to check</param>
-        /// <returns></returns>
-        private string GetFilterType(string fileName)
+        /// <param name="fileName"> The file to check </param>
+        /// <returns> </returns>
+        private static string GetFilterType(string fileName)
         {
             string extension = Path.GetExtension(fileName);
             extension = extension?.ToUpperInvariant();
 
-            switch (extension)
+            return extension switch
             {
-                case ".DOC":
-                case ".DOT":
-                case ".DOCM":
-                case ".DOCX":
-                case ".DOTM":
-                case ".ODT":
-                case ".RTF":
-                case ".MHT":
-                case ".WPS":
-                case ".WRI":
-                    return "writer_pdf_Export";
-
-                case ".XLS":
-                case ".XLT":
-                case ".XLW":
-                case ".XLSB":
-                case ".XLSM":
-                case ".XLSX":
-                case ".XLTM":
-                case ".XLTX":
-                    return "calc_pdf_Export";
-
-                case ".POT":
-                case ".PPT":
-                case ".PPS":
-                case ".POTM":
-                case ".POTX":
-                case ".PPSM":
-                case ".PPSX":
-                case ".PPTM":
-                case ".PPTX":
-                case ".ODP":
-                    return "impress_pdf_Export";
-
-                default:
-                    return null;
-            }
+                ".DOC" or ".DOT" or ".DOCM" or ".DOCX" or ".DOTM" or ".ODT" or ".RTF" or ".MHT" or ".WPS" or ".WRI" => "writer_pdf_Export",
+                ".XLS" or ".XLT" or ".XLW" or ".XLSB" or ".XLSM" or ".XLSX" or ".XLTM" or ".XLTX" => "calc_pdf_Export",
+                ".POT" or ".PPT" or ".PPS" or ".POTM" or ".POTX" or ".PPSM" or ".PPSX" or ".PPTM" or ".PPTX" or ".ODP" => "impress_pdf_Export",
+                _ => null,
+            };
         }
-        #endregion
+
+        #endregion GetFilterType
 
         #region Dispose
+
         /// <summary>
-        ///     Disposes the running <see cref="_libreOfficeProcess" />
+        /// Disposes the running <see cref="_libreOfficeProcess"/>
         /// </summary>
         public void Dispose()
         {
@@ -454,6 +446,7 @@ namespace OfficeConverter
             _disposed = true;
             StopLibreOffice();
         }
-        #endregion
+
+        #endregion Dispose
     }
 }

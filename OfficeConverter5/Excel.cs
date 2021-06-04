@@ -9,97 +9,84 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
+
 using Microsoft.Office.Core;
 using Microsoft.Win32;
+
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+
 using ExcelInterop = Microsoft.Office.Interop.Excel;
 
-//
 // Excel.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
 // Copyright (c) 2014-2021 Magic-Sessions. (www.magic-sessions.com)
 //
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+// associated documentation files (the "Software"), to deal in the Software without restriction,
+// including without limitation the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in all copies or
+// substantial portions of the Software.
 //
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+// NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON
+// INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
+// OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace OfficeConverter
 {
     #region Struct
+
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     // ReSharper disable once InconsistentNaming
     internal struct INTERFACEINFO
     {
         [MarshalAs(UnmanagedType.IUnknown)]
         public object punk;
+
         public Guid iid;
         public ushort wMethod;
     }
-    #endregion
+
+    #endregion Struct
 
     #region Interfaces
-    [ComImport, ComConversionLoss, InterfaceType(1), 
+
+    [ComImport, ComConversionLoss, InterfaceType(1),
      Guid("00000016-0000-0000-C000-000000000046")]
     internal interface IMessageFilter
     {
-        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall, 
+        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall,
              MethodCodeType = MethodCodeType.Runtime)]
-
-        int HandleInComingCall([In] uint dwCallType, [In] IntPtr htaskCaller, 
+        int HandleInComingCall([In] uint dwCallType, [In] IntPtr htaskCaller,
             [In] uint dwTickCount,
-            [In, MarshalAs(UnmanagedType.LPArray)] INTERFACEINFO[] 
+            [In, MarshalAs(UnmanagedType.LPArray)] INTERFACEINFO[]
                 lpInterfaceInfo);
 
-        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall, 
+        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall,
              MethodCodeType = MethodCodeType.Runtime)]
-        int RetryRejectedCall([In] IntPtr htaskCallee, [In] uint dwTickCount, 
+        int RetryRejectedCall([In] IntPtr htaskCallee, [In] uint dwTickCount,
             [In] uint dwRejectType);
 
-        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall, 
+        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall,
              MethodCodeType = MethodCodeType.Runtime)]
-        int MessagePending([In] IntPtr htaskCallee, [In] uint dwTickCount, 
+        int MessagePending([In] IntPtr htaskCallee, [In] uint dwTickCount,
             [In] uint dwPendingType);
     }
-    #endregion
+
+    #endregion Interfaces
 
     #region MessageFilter
+
     internal class MessageFilter : IMessageFilter
     {
-        [DllImport("ole32.dll")]
-        static extern int CoRegisterMessageFilter(IMessageFilter lpMessageFilter, out IMessageFilter lplpMessageFilter);
-        // ReSharper disable once NotAccessedField.Local
-        private IMessageFilter _oldMessageFilter;
-
-        public void RegisterFilter()
-        {
-            _ = CoRegisterMessageFilter(this, out _oldMessageFilter);
-            Thread.Sleep(100);
-        }
-
         public int HandleInComingCall(uint dwCallType, IntPtr htaskCaller, uint dwTickCount, INTERFACEINFO[] lpInterfaceInfo)
-        {
-            return 1;
-        }
-
-        public int RetryRejectedCall(IntPtr htaskCallee, uint dwTickCount, uint dwRejectType)
         {
             return 1;
         }
@@ -108,44 +95,61 @@ namespace OfficeConverter
         {
             return 1;
         }
+
+        public void RegisterFilter()
+        {
+            _ = CoRegisterMessageFilter(this, out _);
+            Thread.Sleep(100);
+        }
+
+        // ReSharper disable once NotAccessedField.Local
+        public int RetryRejectedCall(IntPtr htaskCallee, uint dwTickCount, uint dwRejectType)
+        {
+            return 1;
+        }
+
+        [DllImport("ole32.dll")]
+        private static extern int CoRegisterMessageFilter(IMessageFilter lpMessageFilter, out IMessageFilter lplpMessageFilter);
     }
-    #endregion
+
+    #endregion MessageFilter
 
     /// <summary>
-    ///     This class is used as a placeholder for all Excel related methods
+    /// This class is used as a placeholder for all Excel related methods
     /// </summary>
     internal class Excel : IDisposable
     {
         #region Private class ShapePosition
+
         /// <summary>
-        ///     Placeholder for shape information
+        /// Placeholder for shape information
         /// </summary>
         private class ShapePosition
         {
             /// <summary>
-            ///     Returns the top left column
-            /// </summary>
-            public int TopLeftColumn { get; }
-
-            /// <summary>
-            ///     Returns the top left row
-            /// </summary>
-            public int TopLeftRow { get; }
-
-            /// <summary>
-            ///     Returns the bottom right column
+            /// Returns the bottom right column
             /// </summary>
             public int BottomRightColumn { get; }
 
             /// <summary>
-            ///     Returns the bottom right row
+            /// Returns the bottom right row
             /// </summary>
             public int BottomRightRow { get; }
 
             /// <summary>
-            ///     Creates this object and sets it's needed properties
+            /// Returns the top left column
             /// </summary>
-            /// <param name="shape">The shape object</param>
+            public int TopLeftColumn { get; }
+
+            /// <summary>
+            /// Returns the top left row
+            /// </summary>
+            public int TopLeftRow { get; }
+
+            /// <summary>
+            /// Creates this object and sets it's needed properties
+            /// </summary>
+            /// <param name="shape"> The shape object </param>
             public ShapePosition(ExcelInterop.Shape shape)
             {
                 ExcelInterop.Range topLeftCell = shape.TopLeftCell;
@@ -158,80 +162,82 @@ namespace OfficeConverter
                 _ = Marshal.ReleaseComObject(bottomRightCell);
             }
         }
-        #endregion
+
+        #endregion Private class ShapePosition
 
         #region Private class ExcelPaperSize
+
         /// <summary>
-        ///     Placeholder for papersize and orientation information
+        /// Placeholder for papersize and orientation information
         /// </summary>
         private class ExcelPaperSize
         {
             /// <summary>
-            ///     Returns the papersize
-            /// </summary>
-            public ExcelInterop.XlPaperSize PaperSize { get; }
-
-            /// <summary>
-            ///     Returns the orientation
+            /// Returns the orientation
             /// </summary>
             public ExcelInterop.XlPageOrientation Orientation { get; }
 
             /// <summary>
-            ///     Creates this object and sets it's needed properties
+            /// Returns the papersize
             /// </summary>
-            /// <param name="paperSize">The papersize</param>
-            /// <param name="orientation">The orientation</param>
+            public ExcelInterop.XlPaperSize PaperSize { get; }
+
+            /// <summary>
+            /// Creates this object and sets it's needed properties
+            /// </summary>
+            /// <param name="paperSize"> The papersize </param>
+            /// <param name="orientation"> The orientation </param>
             public ExcelPaperSize(ExcelInterop.XlPaperSize paperSize, ExcelInterop.XlPageOrientation orientation)
             {
                 PaperSize = paperSize;
                 Orientation = orientation;
             }
         }
-        #endregion
+
+        #endregion Private class ExcelPaperSize
 
         #region Private enum MergedCellSearchOrder
+
         /// <summary>
-        ///     Direction to search in merged cells
+        /// Direction to search in merged cells
         /// </summary>
         private enum MergedCellSearchOrder
         {
             /// <summary>
-            ///     Search for first row in the merge area
+            /// Search for first row in the merge area
             /// </summary>
             FirstRow,
 
             /// <summary>
-            ///     Search for first column in the merge area
+            /// Search for first column in the merge area
             /// </summary>
             FirstColumn,
 
             /// <summary>
-            ///     Search for last row in the merge area
+            /// Search for last row in the merge area
             /// </summary>
             LastRow,
 
             /// <summary>
-            ///     Search for last column in the merge area
+            /// Search for last column in the merge area
             /// </summary>
             LastColumn
         }
-        #endregion
+
+        #endregion Private enum MergedCellSearchOrder
 
         #region Fields
-        /// <summary>
-        ///     Excel version number
-        /// </summary>
-        private readonly int _versionNumber;
 
         /// <summary>
-        ///     Excel maximum rows
+        /// Excel maximum rows
         /// </summary>
         private readonly int _maxRows;
 
         /// <summary>
-        ///     Paper sizes to use when detecting optimal page size with the <see cref="SetWorkSheetPaperSize" /> method
+        /// Paper sizes to use when detecting optimal page size with the <see
+        /// cref="SetWorkSheetPaperSize"/> method
         /// </summary>
-        private readonly List<ExcelPaperSize> _paperSizes = new List<ExcelPaperSize>
+        private readonly List<ExcelPaperSize> _paperSizes = new()
         {
             new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlPortrait),
             new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlLandscape),
@@ -240,36 +246,53 @@ namespace OfficeConverter
         };
 
         /// <summary>
-        ///     Zoom ration to use when detecting optimal page size with the <see cref="SetWorkSheetPaperSize" /> method
+        /// Excel version number
         /// </summary>
-        private readonly List<int> _zoomRatios = new List<int> {100, 95, 90, 85, 80, 75, 70};
+        private readonly int _versionNumber;
 
         /// <summary>
-        ///     <see cref="ExcelInterop.ApplicationClass"/>
+        /// Zoom ration to use when detecting optimal page size with the <see
+        /// cref="SetWorkSheetPaperSize"/> method
+        /// </summary>
+        private readonly List<int> _zoomRatios = new() { 100, 95, 90, 85, 80, 75, 70 };
+
+        /// <summary>
+        /// Keeps track is we already disposed our resources
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
+        /// <see cref="ExcelInterop.ApplicationClass"/>
         /// </summary>
         private ExcelInterop.ApplicationClass _excel;
 
         /// <summary>
-        ///     A <see cref="Process" /> object to Excel
+        /// A <see cref="Process"/> object to Excel
         /// </summary>
         private Process _excelProcess;
 
         /// <summary>
-        ///     When set then this folder is used for temporary files
+        /// When set then this folder is used for temporary files
         /// </summary>
         private DirectoryInfo _tempDirectory;
 
-        /// <summary>
-        ///     Keeps track is we already disposed our resources
-        /// </summary>
-        private bool _disposed;
-        #endregion
+        #endregion Fields
 
         #region Properties
+
         /// <summary>
-        ///     When set then this directory is used to store temporary files
+        /// When set to <c> true </c> then the <see cref="TempDirectory"/> will not be deleted when
+        /// the extraction is done
         /// </summary>
-        /// <exception cref="DirectoryNotFoundException">Raised when the given directory does not exists</exception>
+        /// <remarks> For debugging perpeses </remarks>
+        public bool DoNotDeleteTempDirectory { get; set; }
+
+        /// <summary>
+        /// When set then this directory is used to store temporary files
+        /// </summary>
+        /// <exception cref="DirectoryNotFoundException">
+        /// Raised when the given directory does not exists
+        /// </exception>
         public string TempDirectory
         {
             get => _tempDirectory.FullName;
@@ -285,16 +308,7 @@ namespace OfficeConverter
         }
 
         /// <summary>
-        ///     When set to <c>true</c> then the <see cref="TempDirectory"/>
-        ///     will not be deleted when the extraction is done
-        /// </summary>
-        /// <remarks>
-        ///     For debugging perpeses
-        /// </remarks>
-        public bool DoNotDeleteTempDirectory { get; set; }
-
-        /// <summary>
-        ///     Returns a reference to the temp directory
+        /// Returns a reference to the temp directory
         /// </summary>
         private DirectoryInfo GetTempDirectory
         {
@@ -315,9 +329,9 @@ namespace OfficeConverter
         }
 
         /// <summary>
-        ///     Returns <c>true</c> when Excel is running
+        /// Returns <c> true </c> when Excel is running
         /// </summary>
-        /// <returns></returns>
+        /// <returns> </returns>
         private bool IsExcelRunning
         {
             get
@@ -331,16 +345,20 @@ namespace OfficeConverter
                 return !_excelProcess.HasExited;
             }
         }
-        #endregion
+
+        #endregion Properties
 
         #region Constructor
+
         /// <summary>
-        ///     This constructor checks to see if all requirements for a successful conversion are here.
+        /// This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
-        /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Excel version</exception>
+        /// <exception cref="OCConfiguration">
+        /// Raised when the registry could not be read to determine Excel version
+        /// </exception>
         internal Excel()
         {
-            MessageFilter messageFilter = new MessageFilter();
+            MessageFilter messageFilter = new();
             messageFilter.RegisterFilter();
 
             Logger.WriteToLog("Checking what version of Excel is installed");
@@ -406,27 +424,13 @@ namespace OfficeConverter
             const int excelMaxRowsFrom2003AndBelow = 65535;
             const int excelMaxRowsFrom2007AndUp = 1048576;
 
-            switch (_versionNumber)
+            _maxRows = _versionNumber switch
             {
                 // Excel 2007
-                case 12:
-                // Excel 2010
-                case 14:
-                // Excel 2013
-                case 15:
-                // Excel 2016
-                case 16:
-                // Excel 2019
-                case 17:
-                    _maxRows = excelMaxRowsFrom2007AndUp;
-                    break;
-
+                12 or 14 or 15 or 16 or 17 => excelMaxRowsFrom2007AndUp,
                 // Excel 2003 and older
-                default:
-                    _maxRows = excelMaxRowsFrom2003AndBelow;
-                    break;
-            }
-
+                _ => excelMaxRowsFrom2003AndBelow,
+            };
             Logger.WriteToLog($"Setting maximum Excel rows to {_maxRows}");
 
             // We only need to perform this check if we are running on a server
@@ -437,11 +441,13 @@ namespace OfficeConverter
 
             CheckIfPrinterIsInstalled();
         }
-        #endregion
+
+        #endregion Constructor
 
         #region StartExcel
+
         /// <summary>
-        ///     Starts Excel
+        /// Starts Excel
         /// </summary>
         private void StartExcel()
         {
@@ -470,11 +476,13 @@ namespace OfficeConverter
 
             Logger.WriteToLog($"Excel started with process id {_excelProcess.Id}");
         }
-        #endregion
+
+        #endregion StartExcel
 
         #region StopExcel
+
         /// <summary>
-        ///     Stops Excel
+        /// Stops Excel
         /// </summary>
         private void StopExcel()
         {
@@ -486,7 +494,7 @@ namespace OfficeConverter
                 {
                     _excel.Quit();
                 }
-                catch(Exception exception)
+                catch (Exception exception)
                 {
                     Logger.WriteToLog($"Excel did not shutdown gracefully, exception: {ExceptionHelpers.GetInnerException(exception)}");
                 }
@@ -529,15 +537,19 @@ namespace OfficeConverter
             GC.Collect();
             GC.WaitForPendingFinalizers();
         }
-        #endregion
+
+        #endregion StopExcel
 
         #region CheckIfSystemProfileDesktopDirectoryExists
+
         /// <summary>
-        ///     If you want to run this code on a server then the following folders must exist, if they don't
-        ///     then you can't use Excel to convert files to PDF
+        /// If you want to run this code on a server then the following folders must exist, if they
+        /// don't then you can't use Excel to convert files to PDF
         /// </summary>
-        /// <exception cref="OCConfiguration">Raised when the needed directory could not be created</exception>
-        private void CheckIfSystemProfileDesktopDirectoryExists()
+        /// <exception cref="OCConfiguration">
+        /// Raised when the needed directory could not be created
+        /// </exception>
+        private static void CheckIfSystemProfileDesktopDirectoryExists()
         {
             if (Environment.Is64BitOperatingSystem)
             {
@@ -584,14 +596,16 @@ namespace OfficeConverter
                 }
             }
         }
-        #endregion
+
+        #endregion CheckIfSystemProfileDesktopDirectoryExists
 
         #region CheckIfPrinterIsInstalled
+
         /// <summary>
-        ///     Excel needs a default printer to export to PDF, this method will check if there is one
+        /// Excel needs a default printer to export to PDF, this method will check if there is one
         /// </summary>
-        /// <exception cref="OCConfiguration">Raised when an default printer does not exists</exception>
-        private void CheckIfPrinterIsInstalled()
+        /// <exception cref="OCConfiguration"> Raised when an default printer does not exists </exception>
+        private static void CheckIfPrinterIsInstalled()
         {
             Logger.WriteToLog("Excel needs a printer to convert sheets to pdf ... checking if a printer exists");
 
@@ -611,12 +625,10 @@ namespace OfficeConverter
             foreach (string printerName in installedPrinters)
             {
                 // Retrieve the printer settings.
-                PrinterSettings printer = new PrinterSettings {PrinterName = printerName};
+                PrinterSettings printer = new() { PrinterName = printerName };
 
-                // Check that this is a valid printer.
-                // (This step might be required if you read the printer name
-                // from a user-supplied value or a registry or configuration file
-                // setting.)
+                // Check that this is a valid printer. (This step might be required if you read the
+                // printer name from a user-supplied value or a registry or configuration file setting.)
                 if (printer.IsValid)
                 {
                     Logger.WriteToLog($"A valid printer '{printer.PrinterName}' is found");
@@ -630,14 +642,16 @@ namespace OfficeConverter
                 throw new OCConfiguration("There is no default printer installed, Excel needs one to export to PDF");
             }
         }
-        #endregion
+
+        #endregion CheckIfPrinterIsInstalled
 
         #region GetColumnAddress
+
         /// <summary>
-        ///     Returns the column address for the given <paramref name="column" />
+        /// Returns the column address for the given <paramref name="column"/>
         /// </summary>
-        /// <param name="column"></param>
-        /// <returns></returns>
+        /// <param name="column"> </param>
+        /// <returns> </returns>
         private string GetColumnAddress(int column)
         {
             if (column <= 26)
@@ -658,20 +672,21 @@ namespace OfficeConverter
             return GetColumnAddress(div) + GetColumnAddress(mod);
         }
 
-        #endregion
+        #endregion GetColumnAddress
+
         #region GetColumnNumber
-        #endregion
+
+        #endregion GetColumnNumber
 
         #region CheckForMergedCell
+
         /// <summary>
-        ///     Checks if the given cell is merged and if so returns the last column or row from this merge.
-        ///     When the cell is not merged it just returns the cell
+        /// Checks if the given cell is merged and if so returns the last column or row from this
+        /// merge. When the cell is not merged it just returns the cell
         /// </summary>
-        /// <param name="range">The cell</param>
-        /// <param name="searchOrder">
-        ///     <see cref="MergedCellSearchOrder" />
-        /// </param>
-        /// <returns></returns>
+        /// <param name="range"> The cell </param>
+        /// <param name="searchOrder"> <see cref="MergedCellSearchOrder"/> </param>
+        /// <returns> </returns>
         private static int CheckForMergedCell(ExcelInterop.Range range, MergedCellSearchOrder searchOrder)
         {
             if (range == null)
@@ -693,16 +708,15 @@ namespace OfficeConverter
                     break;
 
                 case MergedCellSearchOrder.LastRow:
-                {
-                    result = range.Row;
+                    {
+                        result = range.Row;
                         ExcelInterop.Range entireRow = range.EntireRow;
 
-                    for (int i = 1; i < range.Column; i++)
-                    {
-                            ExcelInterop.Range cell = (ExcelInterop.Range) entireRow.Cells[i];
+                        for (int i = 1; i < range.Column; i++)
+                        {
+                            ExcelInterop.Range cell = (ExcelInterop.Range)entireRow.Cells[i];
                             ExcelInterop.Range cellMergeArea = cell.MergeArea;
                             ExcelInterop.Range cellMergeAreaRows = cellMergeArea.Rows;
-                            int count = cellMergeAreaRows.Count;
 
                             _ = Marshal.ReleaseComObject(cellMergeAreaRows);
                             _ = Marshal.ReleaseComObject(cellMergeArea);
@@ -710,34 +724,33 @@ namespace OfficeConverter
 
                             int tempResult = result;
 
-                        if (count > 1 && range.Row + count > tempResult)
+                            if (cellMergeAreaRows.Count > 1 && range.Row + cellMergeAreaRows.Count > tempResult)
                             {
-                                tempResult = result + count;
+                                tempResult = result + cellMergeAreaRows.Count;
                             }
 
                             result = tempResult;
-                    }
+                        }
 
                         _ = Marshal.ReleaseComObject(entireRow);
 
-                    break;
-                }
+                        break;
+                    }
 
                 case MergedCellSearchOrder.LastColumn:
-                {
-                    result = range.Column;
+                    {
+                        result = range.Column;
                         ExcelInterop.Range columns = mergeArea.Columns;
-                        int count = columns.Count;
 
-                    if (count > 1)
+                        if (columns.Count > 1)
                         {
-                            result += count;
+                            result += columns.Count;
                         }
 
                         _ = Marshal.ReleaseComObject(columns);
 
-                    break;
-                }
+                        break;
+                    }
             }
 
             if (mergeArea != null)
@@ -747,24 +760,25 @@ namespace OfficeConverter
 
             return result;
         }
-        #endregion
+
+        #endregion CheckForMergedCell
 
         #region GetWorksheetPrintArea
+
         /// <summary>
-        ///     Figures out the used cell range. This are the cell's that contain any form of text and
-        ///     returns this range. An empty range will be returned when there are shapes used on a worksheet
+        /// Figures out the used cell range. This are the cell's that contain any form of text and
+        /// returns this range. An empty range will be returned when there are shapes used on a worksheet
         /// </summary>
-        /// <param name="worksheet"></param>
-        /// <returns></returns>
+        /// <param name="worksheet"> </param>
+        /// <returns> </returns>
         private string GetWorksheetPrintArea(ExcelInterop._Worksheet worksheet)
         {
             int firstColumn = 1;
             int firstRow = 1;
 
-            List<ShapePosition> shapesPosition = new List<ShapePosition>();
+            List<ShapePosition> shapesPosition = new();
 
-            // We can't use this method when there are shapes on a sheet so
-            // we return an empty string
+            // We can't use this method when there are shapes on a sheet so we return an empty string
             ExcelInterop.Shapes shapes = worksheet.Shapes;
             if (shapes.Count > 0)
             {
@@ -923,15 +937,17 @@ namespace OfficeConverter
             return GetColumnAddress(firstColumn) + firstRow + ":" +
                    GetColumnAddress(lastColumn) + lastRow;
         }
-        #endregion
+
+        #endregion GetWorksheetPrintArea
 
         #region CountVerticalPageBreaks
+
         /// <summary>
-        ///     Returns the total number of vertical pagebreaks in the print area
+        /// Returns the total number of vertical pagebreaks in the print area
         /// </summary>
-        /// <param name="pageBreaks"></param>
-        /// <returns></returns>
-        private int CountVerticalPageBreaks(ExcelInterop.VPageBreaks pageBreaks)
+        /// <param name="pageBreaks"> </param>
+        /// <returns> </returns>
+        private static int CountVerticalPageBreaks(ExcelInterop.VPageBreaks pageBreaks)
         {
             int result = 0;
 
@@ -954,14 +970,16 @@ namespace OfficeConverter
 
             return result;
         }
-        #endregion
+
+        #endregion CountVerticalPageBreaks
 
         #region SetWorkSheetPaperSize
+
         /// <summary>
-        ///     This method wil figure out the optimal paper size to use and sets it
+        /// This method wil figure out the optimal paper size to use and sets it
         /// </summary>
-        /// <param name="worksheet"></param>
-        /// <param name="printArea"></param>
+        /// <param name="worksheet"> </param>
+        /// <param name="printArea"> </param>
         private void SetWorkSheetPaperSize(ExcelInterop._Worksheet worksheet, string printArea)
         {
             Logger.WriteToLog($"Detecting optimal paper size for sheet {worksheet.Name} with print area '{printArea}'");
@@ -992,9 +1010,9 @@ namespace OfficeConverter
 
                     foreach (int zoomRatio in _zoomRatios)
                     {
-                        // Yes these page counts look lame, but so is Excel 2010 in not updating
-                        // the pages collection otherwise. We need to call the count methods to
-                        // make this code work
+                        // Yes these page counts look lame, but so is Excel 2010 in not updating the
+                        // pages collection otherwise. We need to call the count methods to make
+                        // this code work
                         pageSetup.Zoom = zoomRatio;
                         // ReSharper disable once RedundantAssignment
                         pageCount = pages.Count;
@@ -1020,14 +1038,16 @@ namespace OfficeConverter
                 _ = Marshal.ReleaseComObject(pageSetup);
             }
         }
-        #endregion
+
+        #endregion SetWorkSheetPaperSize
 
         #region SetChartPaperSize
+
         /// <summary>
-        ///     This method wil set the papersize for a chart
+        /// This method wil set the papersize for a chart
         /// </summary>
-        /// <param name="chart"></param>
-        private void SetChartPaperSize(ExcelInterop._Chart chart)
+        /// <param name="chart"> </param>
+        private static void SetChartPaperSize(ExcelInterop._Chart chart)
         {
             Logger.WriteToLog($"Setting paper site for chart '{chart.Name}' to A4 landscape");
 
@@ -1046,16 +1066,20 @@ namespace OfficeConverter
                 _ = Marshal.ReleaseComObject(pageSetup);
             }
         }
-        #endregion
+
+        #endregion SetChartPaperSize
 
         #region Convert
+
         /// <summary>
-        ///     Converts an Excel sheet to PDF
+        /// Converts an Excel sheet to PDF
         /// </summary>
-        /// <param name="inputFile">The Excel input file</param>
-        /// <param name="outputFile">The PDF output file</param>
-        /// <returns></returns>
-        /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
+        /// <param name="inputFile"> The Excel input file </param>
+        /// <param name="outputFile"> The PDF output file </param>
+        /// <returns> </returns>
+        /// <exception cref="OCCsvFileLimitExceeded">
+        /// Raised when a CSV <paramref name="inputFile"/> has to many rows
+        /// </exception>
         internal void Convert(string inputFile, string outputFile)
         {
             DeleteResiliencyKeys();
@@ -1076,9 +1100,9 @@ namespace OfficeConverter
                 {
                     string tempFileName = Path.Combine(GetTempDirectory.FullName, Guid.NewGuid() + ".txt");
 
-                    // Yes this look somewhat weird but we have to change the extension if we want to handle
-                    // CSV files with different kind of separators. Otherwhise Excel will always overrule whatever
-                    // setting we make to open a file
+                    // Yes this look somewhat weird but we have to change the extension if we want
+                    // to handle CSV files with different kind of separators. Otherwhise Excel will
+                    // always overrule whatever setting we make to open a file
                     Logger.WriteToLog($"Copying CSV file '{inputFile}' to temporary file '{tempFileName}' and setting that one as the input file");
                     File.Copy(inputFile, tempFileName);
                     inputFile = tempFileName;
@@ -1086,7 +1110,8 @@ namespace OfficeConverter
 
                 workbook = OpenWorkbook(inputFile, extension, false);
 
-                // We cannot determine a print area when the document is marked as final so we remove this
+                // We cannot determine a print area when the document is marked as final so we
+                // remove this
                 workbook.Final = false;
 
                 // Fix for "This command is not available in a shared workbook."
@@ -1135,7 +1160,8 @@ namespace OfficeConverter
                             }
                             catch (COMException)
                             {
-                                // Do nothing, this sometimes failes and there is nothing we can do about it
+                                // Do nothing, this sometimes failes and there is nothing we can do
+                                // about it
                             }
                             finally
                             {
@@ -1170,7 +1196,7 @@ namespace OfficeConverter
                             continue;
                     }
 
-                    if (!(sheetObject is ExcelInterop.Chart chart))
+                    if (sheetObject is not ExcelInterop.Chart chart)
                     {
                         continue;
                     }
@@ -1180,7 +1206,7 @@ namespace OfficeConverter
                 }
 
                 _ = Marshal.ReleaseComObject(activeWindow);
-                
+
                 // It is not possible in Excel to export an empty workbook
                 if (usedSheets != 0)
                 {
@@ -1200,14 +1226,13 @@ namespace OfficeConverter
                 StopExcel();
                 throw;
             }
-
             finally
             {
                 try
                 {
                     CloseWorkbook(workbook);
                 }
-                catch(Exception exception)
+                catch (Exception exception)
                 {
                     Logger.WriteToLog("Error closing workbook, error: " + ExceptionHelpers.GetInnerException(exception));
                 }
@@ -1223,23 +1248,25 @@ namespace OfficeConverter
                 }
             }
         }
-        #endregion
+
+        #endregion Convert
 
         #region GetCsvSeperator
+
         /// <summary>
-        ///     Returns the separator and text qualifier that is used in the CSV file
+        /// Returns the separator and text qualifier that is used in the CSV file
         /// </summary>
-        /// <param name="inputFile">The input file</param>
-        /// <param name="separator">The separator that is used</param>
-        /// <param name="textQualifier">The text qualifier</param>
-        /// <returns></returns>
+        /// <param name="inputFile"> The input file </param>
+        /// <param name="separator"> The separator that is used </param>
+        /// <param name="textQualifier"> The text qualifier </param>
+        /// <returns> </returns>
         private static void GetCsvSeparator(string inputFile, out string separator,
             out ExcelInterop.XlTextQualifier textQualifier)
         {
             separator = string.Empty;
             textQualifier = ExcelInterop.XlTextQualifier.xlTextQualifierNone;
 
-            using (StreamReader streamReader = new StreamReader(inputFile))
+            using (StreamReader streamReader = new(inputFile))
             {
                 string line = string.Empty;
                 while (string.IsNullOrEmpty(line))
@@ -1274,17 +1301,24 @@ namespace OfficeConverter
                 }
             }
         }
-        #endregion
+
+        #endregion GetCsvSeperator
 
         #region OpenWorkbook
+
         /// <summary>
-        ///     Opens the <paramref name="inputFile" /> and returns it as an <see cref="ExcelInterop.Workbook" /> object
+        /// Opens the <paramref name="inputFile"/> and returns it as an <see
+        /// cref="ExcelInterop.Workbook"/> object
         /// </summary>
-        /// <param name="inputFile">The file to open</param>
-        /// <param name="extension">The file extension</param>
-        /// <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
-        /// <returns></returns>
-        /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
+        /// <param name="inputFile"> The file to open </param>
+        /// <param name="extension"> The file extension </param>
+        /// <param name="repairMode">
+        /// When true the <paramref name="inputFile"/> is opened in repair mode
+        /// </param>
+        /// <returns> </returns>
+        /// <exception cref="OCCsvFileLimitExceeded">
+        /// Raised when a CSV <paramref name="inputFile"/> has to many rows
+        /// </exception>
         private ExcelInterop.Workbook OpenWorkbook(string inputFile, string extension, bool repairMode)
         {
             Logger.WriteToLog($"Opening workbook '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
@@ -1304,7 +1338,7 @@ namespace OfficeConverter
                                                              excelMaxRows + " rows");
                         }
 
-                        GetCsvSeparator(inputFile, out string separator, out ExcelInterop.XlTextQualifier textQualifier);
+                        GetCsvSeparator(inputFile, out string separator, out Microsoft.Office.Interop.Excel.XlTextQualifier textQualifier);
                         Logger.WriteToLog($"Separator for CSV file set to '{separator}' and text qualifier to '{textQualifier}'");
 
                         switch (separator)
@@ -1386,14 +1420,16 @@ namespace OfficeConverter
                     : OpenWorkbook(inputFile, extension, true);
             }
         }
-        #endregion
+
+        #endregion OpenWorkbook
 
         #region CloseWorkbook
+
         /// <summary>
-        ///     Closes the opened workbook and releases any allocated resources
+        /// Closes the opened workbook and releases any allocated resources
         /// </summary>
-        /// <param name="workbook">The Excel workbook</param>
-        private void CloseWorkbook(ExcelInterop.Workbook workbook)
+        /// <param name="workbook"> The Excel workbook </param>
+        private static void CloseWorkbook(ExcelInterop.Workbook workbook)
         {
             if (workbook == null)
             {
@@ -1406,13 +1442,16 @@ namespace OfficeConverter
             _ = Marshal.ReleaseComObject(workbook);
             Logger.WriteToLog("Workbook closed");
         }
-        #endregion
+
+        #endregion CloseWorkbook
 
         #region DeleteResiliencyKeys
+
         /// <summary>
-        ///     This method will delete the automatic created Resiliency key. Excel uses this registry key
-        ///     to make entries to corrupted workbooks. If there are to many entries under this key Excel will
-        ///     get slower and slower to start. To prevent this we just delete this key when it exists
+        /// This method will delete the automatic created Resiliency key. Excel uses this registry
+        /// key to make entries to corrupted workbooks. If there are to many entries under this key
+        /// Excel will get slower and slower to start. To prevent this we just delete this key when
+        /// it exists
         /// </summary>
         private void DeleteResiliencyKeys()
         {
@@ -1438,11 +1477,13 @@ namespace OfficeConverter
                 Logger.WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
         }
-        #endregion
+
+        #endregion DeleteResiliencyKeys
 
         #region Dispose
+
         /// <summary>
-        ///     Disposes the running <see cref="_excel" />
+        /// Disposes the running <see cref="_excel"/>
         /// </summary>
         public void Dispose()
         {
@@ -1454,6 +1495,7 @@ namespace OfficeConverter
             _disposed = true;
             StopExcel();
         }
-        #endregion
+
+        #endregion Dispose
     }
 }
